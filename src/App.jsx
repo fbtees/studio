@@ -259,9 +259,26 @@ export default function App() {
     setS3(null); setS4(null);
 
     const result = await callClaude(
-      `You are the creative director for FuckBoyTees — a bold, unapologetic, irreverent streetwear brand known for sharp cultural commentary, dark humor, and designs people are proud to wear.
-Generate 5 FULLY DISTINCT design concepts. Each must take a completely different creative angle on the same raw idea.
-Return ONLY valid JSON, no markdown, no backticks:
+      `You are the async function callClaude(systemPrompt, userMsg) {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMsg }],
+    }),
+  });
+  const data = await res.json();
+  const text = data.content?.map(b => b.text || "").join("") || "";
+  // Strip any markdown, find the JSON object
+  const match = text.match(/\{[\s\S]*\}/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch {}
+  }
+  return { raw: text };
+}
 {
   "concepts": [
     {
