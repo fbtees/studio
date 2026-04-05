@@ -45,6 +45,24 @@ const css = `
   .ignite-btn:hover:not(:disabled) { background: #ff4422; transform: translateY(-1px); }
   .ignite-btn:disabled { background: #252525; color: #444; cursor: not-allowed; }
 
+  .style-bar {
+    padding: 14px 32px 18px;
+    background: #0a0a0a;
+    border-bottom: 1px solid #181818;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .style-field { display: flex; flex-direction: column; gap: 5px; }
+  .style-label { font-family: 'Bebas Neue', sans-serif; font-size: 10px; letter-spacing: 4px; color: #444; text-transform: uppercase; }
+  .style-input {
+    background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 3px;
+    color: #ccc; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600;
+    letter-spacing: 0.5px; padding: 8px 12px; outline: none; transition: border-color 0.2s;
+  }
+  .style-input:focus { border-color: #FF2200; color: #fff; }
+  .style-input::placeholder { color: #252525; }
+
   .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: #111; margin: 2px; }
 
   .panel {
@@ -132,7 +150,7 @@ const css = `
   .cc-vis { font-size: 11px; color: #444; margin-top: 7px; font-style: italic; line-height: 1.4; }
 
   /* VARIATION TABS */
-  .vtabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+  .vtabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
   .vtab {
     font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 2px;
     padding: 6px 14px; border: 1px solid #1e1e1e; border-radius: 2px; background: #111;
@@ -143,20 +161,35 @@ const css = `
   .vtab.spinning { color: #FF2200; border-color: #FF2200; animation: blink 0.9s infinite; }
   .vtab.picked { border-color: #33ee77; color: #33ee77; background: #001500; }
 
-  .svg-wrap {
-    background: #fff; border-radius: 3px; display: flex; align-items: center;
-    justify-content: center; overflow: hidden; margin-bottom: 10px;
-    min-height: 180px; max-height: 240px;
-  }
-  .svg-wrap svg { max-width: 100%; max-height: 240px; display: block; }
+  .vname { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #FF2200; text-transform: uppercase; margin-bottom: 6px; }
+  .vbrief { font-size: 12px; color: #666; line-height: 1.5; background: #111; border-left: 2px solid #FF2200; padding: 9px 12px; border-radius: 0 2px 2px 0; margin-bottom: 10px; }
 
-  .vbrief { font-size: 12px; color: #666; line-height: 1.5; background: #111; border-left: 2px solid #FF2200; padding: 9px 12px; border-radius: 0 2px 2px 0; }
-  .vname { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #FF2200; text-transform: uppercase; margin-bottom: 5px; }
+  .decisions-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .decision-row { display: flex; gap: 8px; align-items: flex-start; }
+  .decision-key { font-family: 'Bebas Neue', sans-serif; font-size: 10px; letter-spacing: 3px; color: #FF2200; min-width: 80px; margin-top: 1px; text-transform: uppercase; }
+  .decision-val { font-size: 12px; color: #888; line-height: 1.5; }
+
+  .prompt-wrap { position: relative; margin-bottom: 10px; }
+  .prompt-label { font-family: 'Bebas Neue', sans-serif; font-size: 10px; letter-spacing: 4px; color: #444; margin-bottom: 6px; }
+  .prompt-box {
+    background: #080808; border: 1px solid #1e1e1e; border-radius: 3px;
+    padding: 12px 14px; font-family: 'Barlow', sans-serif; font-size: 12px;
+    color: #aaa; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+    max-height: 140px; overflow-y: auto;
+  }
+  .copy-btn {
+    position: absolute; top: 26px; right: 8px;
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 2px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 10px; letter-spacing: 2px;
+    color: #555; padding: 4px 10px; cursor: pointer; transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: #FFE600; color: #FFE600; }
+  .copy-btn.copied { border-color: #33ee77; color: #33ee77; }
 
   .pick-btn {
     width: 100%; border: 1px solid #1e1e1e; border-radius: 2px; background: #111;
     font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 3px; color: #333;
-    padding: 8px 0; cursor: pointer; transition: all 0.15s; margin-top: 8px;
+    padding: 8px 0; cursor: pointer; transition: all 0.15s; margin-top: 4px;
   }
   .pick-btn:hover { border-color: #33ee77; color: #33ee77; }
   .pick-btn.chosen { border-color: #33ee77; color: #33ee77; background: #001500; }
@@ -225,12 +258,37 @@ function Loader({ text }) {
   );
 }
 
+function PromptBox({ prompt }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(prompt).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div className="prompt-wrap">
+      <div className="prompt-label">// IMAGE GENERATION PROMPT — COPY TO MIDJOURNEY / DALL-E / FIREFLY</div>
+      <div className="prompt-box">{prompt}</div>
+      <button className={`copy-btn ${copied ? "copied" : ""}`} onClick={copy}>
+        {copied ? "✓ COPIED" : "COPY"}
+      </button>
+    </div>
+  );
+}
+
 function Empty({ icon, text }) {
   return <div className="empty"><div className="empty-icon">{icon}</div><div className="empty-txt">{text}</div></div>;
 }
 
 export default function App() {
   const [idea, setIdea] = useState("");
+
+  // Style context
+  const [styleAesthetic, setStyleAesthetic] = useState("");
+  const [styleColor, setStyleColor] = useState("");
+  const [styleTypography, setStyleTypography] = useState("");
+  const [styleReference, setStyleReference] = useState("");
 
   // Stage 1
   const [s1, setS1] = useState(null);
@@ -288,37 +346,58 @@ Return ONLY valid JSON, no markdown, no backticks:
   async function runS2() {
     if (selConcept === null || !s1) return;
     const concept = s1.concepts[selConcept];
-    const freshVars = Array(5).fill(null);
-    setVars(freshVars);
+    setVars(Array(5).fill(null));
     setVLoading(Array(5).fill(true));
     setSelVar(null); setS3(null); setS4(null);
     setActiveVar(0);
 
+    const styleContext = [
+      styleAesthetic && `Aesthetic direction: ${styleAesthetic}`,
+      styleColor && `Color mood: ${styleColor}`,
+      styleTypography && `Typography feel: ${styleTypography}`,
+      styleReference && `Brand references: ${styleReference}`,
+    ].filter(Boolean).join("\n");
+
     await Promise.allSettled(
       VAR_STYLES.map(async (style, i) => {
         const result = await callClaude(
-          `You are a bold graphic designer for FuckBoyTees streetwear. Create a t-shirt SVG.
-RULES:
-- viewBox="0 0 400 400", start with a full white background rect
-- Brand colors ONLY: #000 #fff #FF2200 #FFE600 #888888
-- Must look like a real screen-print — bold, print-ready
-- The tagline must appear prominently
-- STYLE: ${style.name} — ${style.desc}
-- Commit hard to this style's visual language. Make it look DIFFERENT from other styles.
-- Add graphic elements beyond text: shapes, lines, borders, icons, etc.
-- SVG must be complete and valid
-Return ONLY valid JSON, no markdown:
+          `You are a senior graphic designer and art director with 15+ years in streetwear. You think deeply about design before executing. You understand print techniques, cultural context, and what makes a t-shirt actually sell.
+
+Your job is to act as the creative brain behind a design — filling in gaps the client hasn't thought of, making expert decisions, and producing a prompt so detailed and precise that any image generation AI (Midjourney, DALL-E, Firefly) or human designer can execute it perfectly with zero ambiguity.
+
+For each variation you must:
+1. Make expert creative decisions the client hasn't specified (composition, negative space, print placement, specific imagery)
+2. Justify the key decisions briefly
+3. Write a comprehensive, expert-level image generation prompt
+
+Return ONLY valid JSON:
 {
   "variationName": "${style.name}",
-  "brief": "One sentence describing this design's visual approach",
-  "svgCode": "<svg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'>...FULL SVG...</svg>"
+  "designRationale": "2-3 sentences: the creative logic and key decisions made",
+  "decisions": {
+    "composition": "specific layout and composition decision",
+    "colorExecution": "exact color usage and how they interact",
+    "typographyExecution": "specific font style, weight, treatment",
+    "printTechnique": "e.g. 3-color screen print, discharge print, embroidery",
+    "keyImagery": "specific visual elements and how they're rendered"
+  },
+  "imagePrompt": "The full Midjourney/image-gen prompt — minimum 80 words, maximum 150 words. Must include: subject, style, composition, colors, typography treatment, mood, print technique, resolution/quality tags. Written as a direct prompt, not a description."
 }`,
-          `Design a ${style.name} variation for this concept:
+          `Design variation: ${style.name} — ${style.desc}
+
+CONCEPT BRIEF:
 Tagline: "${concept.tagline}"
-Visual: ${concept.visualDescription}
-Colors: ${concept.colorPalette}
-Typography: ${concept.typography}
-Mood: ${concept.mood}`
+Creative angle: ${concept.angle}
+Visual direction: ${concept.visualDescription}
+Concept color palette: ${concept.colorPalette}
+Concept typography: ${concept.typography}
+Mood: ${concept.mood}
+Target audience: ${concept.targetAudience}
+
+CLIENT STYLE INPUTS:
+${styleContext || "None provided — use your expert judgment based on the concept."}
+
+Think like a senior designer. Fill in every gap. Make the decisions the client hasn't made. Then write the definitive prompt for this variation.`
         );
         setVars(prev => { const n = [...prev]; n[i] = result; return n; });
         setVLoading(prev => { const n = [...prev]; n[i] = false; return n; });
@@ -411,6 +490,25 @@ Calendar: ${JSON.stringify(s3.calendar)}`
           </div>
         </div>
 
+        <div className="style-bar">
+          <div className="style-field">
+            <div className="style-label">// Aesthetic</div>
+            <input className="style-input" placeholder="e.g. vintage, grunge, minimal..." value={styleAesthetic} onChange={e => setStyleAesthetic(e.target.value)} />
+          </div>
+          <div className="style-field">
+            <div className="style-label">// Color Mood</div>
+            <input className="style-input" placeholder="e.g. black + neon green, muted earthy..." value={styleColor} onChange={e => setStyleColor(e.target.value)} />
+          </div>
+          <div className="style-field">
+            <div className="style-label">// Typography</div>
+            <input className="style-input" placeholder="e.g. hand-drawn, stencil, serif..." value={styleTypography} onChange={e => setStyleTypography(e.target.value)} />
+          </div>
+          <div className="style-field">
+            <div className="style-label">// Reference Brands</div>
+            <input className="style-input" placeholder="e.g. Supreme, Off-White, Stussy..." value={styleReference} onChange={e => setStyleReference(e.target.value)} />
+          </div>
+        </div>
+
         <div className="dashboard">
 
           {/* ── S1: CONCEPT EXPANSION ── */}
@@ -477,14 +575,14 @@ Calendar: ${JSON.stringify(s3.calendar)}`
             <div className="bg-num">02</div>
             <div className="panel-head">
               <div>
-                <div className="p-title">Design Variations</div>
-                <div className="p-sub">5 SVG Designs · Generating in Parallel</div>
+                <div className="p-title">Design Prompts</div>
+                <div className="p-sub">5 Expert Briefs · Midjourney-Ready Prompts</div>
               </div>
               <Badge status={s2Status} />
             </div>
             <div className="panel-body">
               {!vars.some(Boolean) && !vLoading.some(Boolean) && (
-                <Empty icon="🎨" text="Select a concept and generate designs" />
+                <Empty icon="✏️" text="Select a concept and generate prompts" />
               )}
               {(vars.some(Boolean) || vLoading.some(Boolean)) && (
                 <>
@@ -500,14 +598,27 @@ Calendar: ${JSON.stringify(s3.calendar)}`
                     ))}
                   </div>
                   <div className="scroll">
-                    {vLoading[activeVar] && <Loader text={`Generating ${VAR_STYLES[activeVar].name}...`} />}
+                    {vLoading[activeVar] && <Loader text={`Senior Designer Thinking: ${VAR_STYLES[activeVar].name}...`} />}
                     {curVar && !vLoading[activeVar] && (
                       <>
                         <div className="vname">V{activeVar + 1} — {curVar.variationName}</div>
-                        {curVar.svgCode && (
-                          <div className="svg-wrap" dangerouslySetInnerHTML={{ __html: curVar.svgCode }} />
+                        <div className="vbrief">{curVar.designRationale}</div>
+
+                        {curVar.decisions && (
+                          <div className="decisions-list">
+                            {Object.entries(curVar.decisions).map(([key, val]) => (
+                              <div key={key} className="decision-row">
+                                <div className="decision-key">{key}</div>
+                                <div className="decision-val">{val}</div>
+                              </div>
+                            ))}
+                          </div>
                         )}
-                        <div className="vbrief">{curVar.brief}</div>
+
+                        {curVar.imagePrompt && (
+                          <PromptBox prompt={curVar.imagePrompt} />
+                        )}
+
                         <button
                           className={`pick-btn ${selVar === activeVar ? "chosen" : ""}`}
                           onClick={() => { setSelVar(activeVar); setS3(null); setS4(null); }}
