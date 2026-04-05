@@ -164,6 +164,14 @@ const css = `
   .vname { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #FF2200; text-transform: uppercase; margin-bottom: 6px; }
   .vbrief { font-size: 12px; color: #666; line-height: 1.5; background: #111; border-left: 2px solid #FF2200; padding: 9px 12px; border-radius: 0 2px 2px 0; margin-bottom: 10px; }
 
+  .svg-wrap {
+    background: #fff; border-radius: 3px; display: flex; align-items: center;
+    justify-content: center; overflow: hidden; margin-bottom: 10px;
+    min-height: 160px; max-height: 200px;
+  }
+  .svg-wrap svg { max-width: 100%; max-height: 200px; display: block; }
+  .svg-loading { margin-bottom: 10px; padding: 16px; background: #0f0f0f; border-radius: 3px; }
+
   .decisions-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
   .decision-row { display: flex; gap: 8px; align-items: flex-start; }
   .decision-key { font-family: 'Bebas Neue', sans-serif; font-size: 10px; letter-spacing: 3px; color: #FF2200; min-width: 80px; margin-top: 1px; text-transform: uppercase; }
@@ -297,7 +305,9 @@ export default function App() {
 
   // Stage 2
   const [vars, setVars] = useState(Array(5).fill(null));
+  const [svgs, setSvgs] = useState(Array(5).fill(null));
   const [vLoading, setVLoading] = useState(Array(5).fill(false));
+  const [svgLoading, setSvgLoading] = useState(Array(5).fill(false));
   const [activeVar, setActiveVar] = useState(0);
   const [selVar, setSelVar] = useState(null);
 
@@ -309,13 +319,14 @@ export default function App() {
   const [s4, setS4] = useState(null);
   const [s4Loading, setS4Loading] = useState(false);
 
-  const anyBusy = s1Loading || vLoading.some(Boolean) || s3Loading || s4Loading;
+  const anyBusy = s1Loading || vLoading.some(Boolean) || svgLoading.some(Boolean) || s3Loading || s4Loading;
 
   async function runS1() {
     if (!idea.trim()) return;
     setS1Loading(true);
     setS1(null); setSelConcept(null);
-    setVars(Array(5).fill(null)); setVLoading(Array(5).fill(false));
+    setVars(Array(5).fill(null)); setSvgs(Array(5).fill(null));
+    setVLoading(Array(5).fill(false)); setSvgLoading(Array(5).fill(false));
     setActiveVar(0); setSelVar(null);
     setS3(null); setS4(null);
 
@@ -347,7 +358,9 @@ Return ONLY valid JSON, no markdown, no backticks:
     if (selConcept === null || !s1) return;
     const concept = s1.concepts[selConcept];
     setVars(Array(5).fill(null));
+    setSvgs(Array(5).fill(null));
     setVLoading(Array(5).fill(true));
+    setSvgLoading(Array(5).fill(true));
     setSelVar(null); setS3(null); setS4(null);
     setActiveVar(0);
 
@@ -360,15 +373,12 @@ Return ONLY valid JSON, no markdown, no backticks:
 
     await Promise.allSettled(
       VAR_STYLES.map(async (style, i) => {
-        const result = await callClaude(
+
+        // CALL A: Senior designer expert brief + image prompt
+        const promptCall = callClaude(
           `You are a senior graphic designer and art director with 15+ years in streetwear. You think deeply about design before executing. You understand print techniques, cultural context, and what makes a t-shirt actually sell.
 
 Your job is to act as the creative brain behind a design — filling in gaps the client hasn't thought of, making expert decisions, and producing a prompt so detailed and precise that any image generation AI (Midjourney, DALL-E, Firefly) or human designer can execute it perfectly with zero ambiguity.
-
-For each variation you must:
-1. Make expert creative decisions the client hasn't specified (composition, negative space, print placement, specific imagery)
-2. Justify the key decisions briefly
-3. Write a comprehensive, expert-level image generation prompt
 
 Return ONLY valid JSON:
 {
@@ -399,8 +409,45 @@ ${styleContext || "None provided — use your expert judgment based on the conce
 
 Think like a senior designer. Fill in every gap. Make the decisions the client hasn't made. Then write the definitive prompt for this variation.`
         );
-        setVars(prev => { const n = [...prev]; n[i] = result; return n; });
+
+        // CALL B: SVG design preview sketch
+        const svgCall = callClaude(
+          `You are a bold graphic designer for FuckBoyTees streetwear. Create a directional SVG design sketch — a visual preview of the t-shirt concept.
+RULES:
+- viewBox="0 0 400 400", white background rect fills entire canvas
+- Brand colors: #000 #fff #FF2200 #FFE600 #888888
+- Bold, print-ready look — real streetwear energy
+- Tagline must appear prominently
+- STYLE: ${style.name} — ${style.desc}
+- Add graphic elements: shapes, lines, borders, icons beyond just text
+- Complete, valid SVG only
+Return ONLY valid JSON:
+{
+  "svgCode": "<svg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'>...COMPLETE SVG...</svg>"
+}`,
+          `SVG preview for: ${style.name}
+Tagline: "${concept.tagline}"
+Visual: ${concept.visualDescription}
+Colors: ${concept.colorPalette}
+Typography: ${concept.typography}
+Mood: ${concept.mood}
+${styleAesthetic ? `Aesthetic: ${styleAesthetic}` : ""}
+${styleColor ? `Color direction: ${styleColor}` : ""}
+${styleReference ? `References: ${styleReference}` : ""}`
+        );
+
+        // Fire both simultaneously
+        const [promptResult, svgResult] = await Promise.allSettled([promptCall, svgCall]);
+
+        if (promptResult.status === "fulfilled") {
+          setVars(prev => { const n = [...prev]; n[i] = promptResult.value; return n; });
+        }
         setVLoading(prev => { const n = [...prev]; n[i] = false; return n; });
+
+        if (svgResult.status === "fulfilled") {
+          setSvgs(prev => { const n = [...prev]; n[i] = svgResult.value; return n; });
+        }
+        setSvgLoading(prev => { const n = [...prev]; n[i] = false; return n; });
       })
     );
   }
@@ -598,25 +645,38 @@ Calendar: ${JSON.stringify(s3.calendar)}`
                     ))}
                   </div>
                   <div className="scroll">
-                    {vLoading[activeVar] && <Loader text={`Senior Designer Thinking: ${VAR_STYLES[activeVar].name}...`} />}
-                    {curVar && !vLoading[activeVar] && (
+                    {vLoading[activeVar] && svgLoading[activeVar] && <Loader text={`Senior Designer Working: ${VAR_STYLES[activeVar].name}...`} />}
+                    {(curVar || svgs[activeVar]) && !vLoading[activeVar] && (
                       <>
-                        <div className="vname">V{activeVar + 1} — {curVar.variationName}</div>
-                        <div className="vbrief">{curVar.designRationale}</div>
+                        <div className="vname">V{activeVar + 1} — {curVar?.variationName || VAR_STYLES[activeVar].name}</div>
 
-                        {curVar.decisions && (
-                          <div className="decisions-list">
-                            {Object.entries(curVar.decisions).map(([key, val]) => (
-                              <div key={key} className="decision-row">
-                                <div className="decision-key">{key}</div>
-                                <div className="decision-val">{val}</div>
-                              </div>
-                            ))}
+                        {/* SVG PREVIEW */}
+                        {svgLoading[activeVar] && (
+                          <div className="svg-loading">
+                            <div className="loader-text" style={{fontSize:'10px',marginBottom:'6px'}}>Rendering Preview...</div>
+                            <div className="loader-bar"><div className="loader-fill" /></div>
                           </div>
                         )}
+                        {svgs[activeVar]?.svgCode && !svgLoading[activeVar] && (
+                          <div className="svg-wrap" dangerouslySetInnerHTML={{ __html: svgs[activeVar].svgCode }} />
+                        )}
 
-                        {curVar.imagePrompt && (
-                          <PromptBox prompt={curVar.imagePrompt} />
+                        {/* DESIGN RATIONALE + DECISIONS */}
+                        {curVar && (
+                          <>
+                            <div className="vbrief">{curVar.designRationale}</div>
+                            {curVar.decisions && (
+                              <div className="decisions-list">
+                                {Object.entries(curVar.decisions).map(([key, val]) => (
+                                  <div key={key} className="decision-row">
+                                    <div className="decision-key">{key}</div>
+                                    <div className="decision-val">{val}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {curVar.imagePrompt && <PromptBox prompt={curVar.imagePrompt} />}
+                          </>
                         )}
 
                         <button
